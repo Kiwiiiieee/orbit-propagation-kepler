@@ -1,0 +1,157 @@
+%General Mission Analysis Tool (GMAT) Script
+%Restricted 3 Body Earth Moon Collision Sensitivity Study
+%Created: 2025 29 12
+
+
+%----------------------------------------
+%---------- Spacecraft
+%----------------------------------------
+
+Create Spacecraft LunarImpactSC;
+GMAT LunarImpactSC.DateFormat = UTCGregorian;
+GMAT LunarImpactSC.Epoch = '01 Jan 2025 12:00:00.000';
+GMAT LunarImpactSC.CoordinateSystem = EarthMJ2000Eq;
+GMAT LunarImpactSC.DisplayStateType = Cartesian;
+
+% Initial Earth centered state
+GMAT LunarImpactSC.X = -6554830;
+GMAT LunarImpactSC.Y = 0;
+GMAT LunarImpactSC.Z = 0;
+
+GMAT LunarImpactSC.VX = 0;
+GMAT LunarImpactSC.VY = -10935.3;
+GMAT LunarImpactSC.VZ = 0;
+
+GMAT LunarImpactSC.DryMass = 1000;
+GMAT LunarImpactSC.Cd = 2.2;
+GMAT LunarImpactSC.Cr = 1.8;
+GMAT LunarImpactSC.DragArea = 10;
+GMAT LunarImpactSC.SRPArea = 10;
+
+GMAT LunarImpactSC.NAIFId = -10002001;
+GMAT LunarImpactSC.NAIFIdReferenceFrame = -90002001;
+GMAT LunarImpactSC.OrbitColor = Blue;
+GMAT LunarImpactSC.TargetColor = Yellow;
+
+GMAT LunarImpactSC.Attitude = CoordinateSystemFixed;
+GMAT LunarImpactSC.AttitudeCoordinateSystem = EarthMJ2000Eq;
+GMAT LunarImpactSC.AttitudeDisplayStateType = Quaternion;
+GMAT LunarImpactSC.AttitudeRateDisplayStateType = AngularVelocity;
+
+
+%----------------------------------------
+%---------- ForceModels
+%----------------------------------------
+
+Create ForceModel EarthMoon_ForceModel;
+GMAT EarthMoon_ForceModel.CentralBody = Earth;
+GMAT EarthMoon_ForceModel.PrimaryBodies = {Earth};
+GMAT EarthMoon_ForceModel.PointMasses = {Luna};
+GMAT EarthMoon_ForceModel.Drag = None;
+GMAT EarthMoon_ForceModel.SRP = Off;
+GMAT EarthMoon_ForceModel.RelativisticCorrection = Off;
+GMAT EarthMoon_ForceModel.ErrorControl = RSSStep;
+
+
+%----------------------------------------
+%---------- Propagators
+%----------------------------------------
+
+Create Propagator EarthMoonProp;
+GMAT EarthMoonProp.FM = EarthMoon_ForceModel;
+GMAT EarthMoonProp.Type = RungeKutta89;
+GMAT EarthMoonProp.InitialStepSize = 10;
+GMAT EarthMoonProp.Accuracy = 1e-12;
+GMAT EarthMoonProp.MinStep = 0.01;
+GMAT EarthMoonProp.MaxStep = 50;
+GMAT EarthMoonProp.MaxStepAttempts = 50;
+GMAT EarthMoonProp.StopIfAccuracyIsViolated = true;
+
+
+%----------------------------------------
+%---------- Subscribers
+%----------------------------------------
+
+Create OrbitView EarthMoonView;
+GMAT EarthMoonView.SolverIterations = Current;
+GMAT EarthMoonView.UpperLeft = [0.05 0.05];
+GMAT EarthMoonView.Size = [0.6 0.8];
+GMAT EarthMoonView.RelativeZOrder = 1;
+GMAT EarthMoonView.Maximized = false;
+
+GMAT EarthMoonView.Add = {LunarImpactSC, Earth, Luna};
+GMAT EarthMoonView.CoordinateSystem = EarthMJ2000Eq;
+GMAT EarthMoonView.DrawObject = [true true true];
+GMAT EarthMoonView.ShowPlot = true;
+
+GMAT EarthMoonView.ViewPointReference = Earth;
+GMAT EarthMoonView.ViewPointVector = [0 0 3e8];
+GMAT EarthMoonView.ViewDirection = Earth;
+GMAT EarthMoonView.ViewScaleFactor = 0.03;
+
+GMAT EarthMoonView.Axes = On;
+GMAT EarthMoonView.Grid = Off;
+GMAT EarthMoonView.SunLine = Off;
+
+
+%----------------------------------------
+%---------- Variables & Reports
+%----------------------------------------
+
+Create Variable vt0Nominal;
+Create Variable dv;
+Create Variable vt0;
+Create Variable CollisionFlag;
+Create Variable MoonDistance;
+
+
+GMAT vt0Nominal = 10935.3;
+GMAT dv = -0.05;
+
+Create ReportFile CollisionReport;
+GMAT CollisionReport.Filename = 'C:\Users\akaou\OneDrive\Desktop\GMAT_CollisionSweep.txt';
+GMAT CollisionReport.Precision = 16;
+GMAT CollisionReport.Add = {vt0, MoonDistance, CollisionFlag};
+GMAT CollisionReport.WriteHeaders = true;
+GMAT CollisionReport.WriteReport = true;
+
+
+%----------------------------------------
+%---------- Mission Sequence
+%----------------------------------------
+
+BeginMissionSequence;
+
+While dv <= 0.05
+
+   GMAT vt0 = vt0Nominal + dv;
+   GMAT CollisionFlag = 0;
+
+   % Reset spacecraft state
+   GMAT LunarImpactSC.X  = -6554830;
+   GMAT LunarImpactSC.Y  = 0;
+   GMAT LunarImpactSC.Z  = 0;
+   GMAT LunarImpactSC.VX = 0;
+   GMAT LunarImpactSC.VY = -vt0;
+   GMAT LunarImpactSC.VZ = 0;
+
+   % Propagate forward (fixed duration)
+   Propagate EarthMoonProp(LunarImpactSC){LunarImpactSC.ElapsedDays = 10};
+
+   % Compute distance to Moon manually
+   GMAT MoonDistance = sqrt((LunarImpactSC.X - Luna.EarthMJ2000Eq.X)^2+(LunarImpactSC.Y - Luna.EarthMJ2000Eq.Y)^2+ (LunarImpactSC.Z - Luna.EarthMJ2000Eq.Z)^2 );
+
+
+   % Collision check
+   If MoonDistance <= 1737400
+      GMAT CollisionFlag = 1;
+   EndIf;
+
+   % Report results
+   Report CollisionReport vt0 MoonDistance CollisionFlag;
+
+   GMAT dv = dv + 0.001;
+
+EndWhile;
+
+Stop;
