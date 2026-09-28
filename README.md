@@ -1,6 +1,6 @@
 # Orbit Propagation: Two-Body Problem and Kepler's Equation
 
-*Individual project · AE 311 · Izmir University of Economics · Dec 2025 – Jan 2026*
+*Individual project · AE 311 · Izmir University of Economics · Dec 2025 to Jan 2026*
 
 ![Relative radial error of the propagated orbit](figures/kepler.png)
 
@@ -78,5 +78,4 @@ This project was completed on a course notebook framework by **Prof. Fabrizio Pi
 ## License
 CC BY 4.0, consistent with the original course material. Please credit both Prof. Fabrizio Pinto and Kaoutar Ammara.
 
----
 Kaoutar Ammara · Aerospace Engineer · [GitHub](https://github.com/Kiwiiiieee) · [LinkedIn](https://linkedin.com/in/kaoutar-ammara)
